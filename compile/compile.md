@@ -114,7 +114,7 @@ C++11规定宏定义中字符串和变量之间必须用空格分隔，hotspot�
 >
 >\#define CLS LANG"Class;"
 
-我们只需打开unsafe.cpp的1321行，将内容由:
+打开unsafe.cpp的1321行，将内容由:
 
 ```c++
 #define CLS LANG"Class;"
@@ -126,13 +126,20 @@ C++11规定宏定义中字符串和变量之间必须用空格分隔，hotspot�
 #define CLS LANG "Class;"
 ```
 
+特别注意unsafe.cpp报的这个错误，对于其它文件可以只修改报错的那一行，但是unsafe.cpp不行，这里需要**将整个文件中所有未加空格的地方补上空格**，只要有一处未修正便会出现上述错误，这个问题已经在jdk9中得到了修正:
 
+[[PATCH RFC 4/5] fix build errors with gcc6](http://mail.openjdk.java.net/pipermail/build-dev/2016-May/017171.html)
 
+但jdk8并未进行更新，jdk9修正后的此文件的地址为: 
 
+[unsafe.cpp @ 12774:385668275400](http://hg.openjdk.java.net/jdk9/jdk9/hotspot/file/385668275400/src/share/vm/prims/unsafe.cpp)
 
+注意，这里不能直接将jdk9的此文件替换进入jdk8的源码，因为改动不止这一处。
 
+## UNIXProcess.java.linux
 
-
-
-
-
+>gmake[2]: *** No rule to make target '/home/skywalker/softwares/openjdk-8-src-b132-03_mar_2014/jdk/src/solaris/classes/java/lang/UNIXProcess.java.linux', needed by '/home/skywalker/softwares/openjdk-8-src-b132-03_mar_2014/build/linux-x86-normal-server-slowdebug/jdk/gensrc/java/lang/UNIXProcess.java'。 停止。
+>BuildJdk.gmk:55: recipe for target 'gensrc-only' failed
+>gmake[1]: *** [gensrc-only] Error 2
+>/home/skywalker/softwares/openjdk-8-src-b132-03_mar_2014//make/Main.gmk:115: recipe for target 'jdk-only' failed
+>make: *** [jdk-only] Error 2
