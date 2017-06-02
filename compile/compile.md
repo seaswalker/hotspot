@@ -143,3 +143,5 @@ C++11规定宏定义中字符串和变量之间必须用空格分隔，hotspot�
 >gmake[1]: *** [gensrc-only] Error 2
 >/home/skywalker/softwares/openjdk-8-src-b132-03_mar_2014//make/Main.gmk:115: recipe for target 'jdk-only' failed
 >make: *** [jdk-only] Error 2
+
+解决方法是将jdk/src/solaris/classes/java/lang/目录下已有的UNIXProcess.java重命名为UNIXProcess.java.linux即可，原理，不知道。
