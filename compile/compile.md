@@ -1,147 +1,150 @@
-使用的系统环境: Fedora25 32位版，openjdk-8-src-b132-03_mar_2014。
+# JDK
 
-# 准备
-
-## jdk7
-
-OpenJDK8的编译需要jdk7作为引导jdk，Fedora自带了jdk8，需要先将其卸载:
-
-Fedora25采用dnf作为默认的包管理器，但yum同样可以使用，且两者的命令格式几乎一致。
+openjdk8的编译需要jdk1.7作为引导jdk，如果系统已存在1.8版本的，那么我们首先需要将其卸载，Mac上jdk的卸载只需一条命令即可：
 
 ```shell
-dnf list installed | grep java
+sudo rm -rf /Library/Java/JavaVirtualMachines/jdk1.8.0_131.jdk/
 ```
 
-查找得到自带jdk包名，然后使用命令:
+jdk的版本号根据实际情况进行调整即可，注意这样卸载之后在Mac的系统便好设置中仍然存在java的设置项，将其保留即可，因为Mac当检测到有新的jdk安装时，会将此选项对应到新的jdk上，那时此功能将重新可用。
+
+1.7版本的jdk官方已不提供下载，下列地址可用：
+
+[jdk-7u71-macosx-x64.dmg](http://download.csdn.net/download/sxsj333/8331551)
+
+# XQuartz
+
+编译之前需要先安装此依赖库，去官方网站下载dmg包直接安装即可：
+
+[XQuartz](https://www.xquartz.org/)
+
+# 设置
+
+适用的参数命令如下：
 
 ```shell
-dnf remove java-1.8.0-openjdk-headless.i686(在我的32机上为此名)
+./configure --with-debug-level=slowdebug --with-num-cores=2 --with-jobs=4 CC=clang CXX=clang++ --with-target-bits=64
 ```
 
-官方现已不再提供jdk7的下载，下列地址可用:
+CC参数用以指定编译使用的C++编译器，而clang是Mac默认的编译器。
 
-[jdk-7-linux-i586.rpm](http://download.csdn.net/download/fujx333/4261506)
+## GCC未找到
 
-使用命令`rpm -ivh jdk-7-linux-i586.rpm `安装即可，如遇到缺少依赖包，在联网的状况下使用dnf或yum命令安装即可。
-
-## 依赖
-
-在OpenJDK源码路径下执行:
+报错的信息如下：
 
 ```shell
-./configure --with-debug-level=slowdebug
+configure: error: GCC compiler is required. Try setting --with-tools-dir
 ```
 
-缺少依赖时根据提示的包名使用dnf或yum安装即可。
+网上有安装老版本XCode的方法，这里借鉴一个简单的方法，打开openjdk下的下列文件:
+
+```shell
+vim common/autoconf/generated-configure.sh
+```
+
+将第20061和21640行的以下内容注释掉:
+
+```shell
+as_fn_error $? "GCC compiler is required. Try setting --with-tools-dir." "$LINENO" 5
+```
+
+## freetype
+
+编译依赖于此库，使用以下命令进行安装即可:
+
+```shell
+brew install freetype
+```
+
+同时在configure命令后追加以下两个参数:
+
+```shell
+--with-freetype-include=/usr/local/include/freetype2 --with-freetype-lib=/usr/local/lib/ 
+```
+
+至此，configure就可以完成了。
 
 # 编译
 
-`make all CONF=linux-x86-normal-server-slowdebug`
-
-注意，不同版本机器上的配置名(?)不一致，在32系统上为linux-x86-normal-server-slowdebug，此名称在configure完成之后的提示中可以看到。下面便细数过程中遇到的坑。
-
-## 内核版本
-
-Fedora 25的内核版本为4.X，默认情况不支持此版本，我们可以修改文件hotspot/make/linux/Makefile的第228行，由:
+命令:
 
 ```shell
-SUPPORTED_OS_VERSION = 2.4% 2.5% 2.6% 3%
+make all COMPILER_WARNINGS_FATAL=false LFLAGS='-Xlinker -lstdc++' CC=clang USE_CLANG=true LP64=1
 ```
 
-修改为:
+## relocInfo.hpp
 
-```shell
-SUPPORTED_OS_VERSION = 2.4% 2.5% 2.6% 3% 4%
-```
+全名为: share/vm/code/relocInfo.hpp
 
-即可。
-
-## 编译警告提升
-
-默认进行编译时编译器会将警告当做错误来处理致使编译不通过，打开文件hotspot/make/linux/makefiles/gcc.make，将第209行注释掉即可:
-
-```shell
-# Compiler warnings are treated as errors
-# WARNINGS_ARE_ERRORS = -Werror
-```
-
-## 类型转换错误
-
-hotspot源码中存在从unsigned int到int(即jint)类型的强制装换，这在C++11中会报错，而目前新版系统的gcc都是以C++11标准进行编译，我们需要在hotspot/make/linux/makefiles/gcc.make的开头加上下面一行:
-
-```shell
-CFLAGS += -Wno-narrowing
-```
-
-## 负数左移
-
-C++11标准会对针对负数的左移操作进行报错，如下所示:
-
-> error: left operand of shift expression ‘(-1 << 28)’ is negative [-fpermissive]
-
-同样在hotspot/make/linux/makefiles/gcc.make的开头加上:
-
-```shell
-CFLAGS += -fpermissive
-```
-
-## 非法参数
-
-如在make时遇到下列错误:
-
->/usr/bin/make: invalid option -- '/'
->/usr/bin/make: invalid option -- 'a'
->/usr/bin/make: invalid option -- '/'
->/usr/bin/make: invalid option -- 'c'
-
-这是由高版本的make引起的hotspot bug，解决办法是修改文件hotspot/make/linux/makefiles/adjust-mflags.sh的第67行，由:
-
-```shell
-s/ -\([^        ][^    ]*\)j/ -\1 -j/
-```
-
-修改为:
-
-```shell
-s/ -\([^        I][^    I]*\)j/ -\1 -j/
-```
-
-## 宏定义错误
-
-C++11规定宏定义中字符串和变量之间必须用空格分隔，hotspot源码并未遵循C++11标准，假设错误输出如下:
-
->/home/skywalker/softwares/openjdk-8-src-b132-03_mar_2014/hotspot/src/share/vm/prims/unsafe.cpp:1321:17: 错误：unable to find string literal operator ‘operator""OBJ’ with ‘const char [40]’, ‘unsigned int’ arguments
->
->\#define CLS LANG"Class;"
-
-打开unsafe.cpp的1321行，将内容由:
+将第367由:
 
 ```c++
-#define CLS LANG"Class;"
+nline friend relocInfo prefix_relocInfo(int datalen = 0);
+```
+
+改为:
+
+```c++
+nline friend relocInfo prefix_relocInfo(int datalen);
+```
+
+将第462行由:
+
+```c++
+inline relocInfo prefix_relocInfo(int datalen) {
 ```
 
 修改为:
 
 ```c++
-#define CLS LANG "Class;"
+inline relocInfo prefix_relocInfo(int datalen = 0) {
 ```
 
-特别注意unsafe.cpp报的这个错误，对于其它文件可以只修改报错的那一行，但是unsafe.cpp不行，这里需要**将整个文件中所有未加空格的地方补上空格**，只要有一处未修正便会出现上述错误，这个问题已经在jdk9中得到了修正:
+注意，具体的行号可能随jdk的版本而变化，应以具体的错误信息输出为准。
 
-[[PATCH RFC 4/5] fix build errors with gcc6](http://mail.openjdk.java.net/pipermail/build-dev/2016-May/017171.html)
+## 类重复
 
-但jdk8并未进行更新，jdk9修正后的此文件的地址为: 
+之前在Fedora上编译时也遇到过这个问题，解决方式就是将UNIXProcess.java重命名为UNIXProcess.java.linux，这个问题的出现原因应该是之前在阅读Process源码时将其重命名的，自己给自己挖的坑😡.
 
-[unsafe.cpp @ 12774:385668275400](http://hg.openjdk.java.net/jdk9/jdk9/hotspot/file/385668275400/src/share/vm/prims/unsafe.cpp)
+之后就可以顺利的编译成功了，截个图纪念下:
 
-注意，这里不能直接将jdk9的此文件替换进入jdk8的源码，因为改动不止这一处。
+![编译成功](images/build_finish.png)
 
-## UNIXProcess.java.linux
+全部编译过程需要较高的CPU占用率，编译之后Mac都可以煎鸡蛋了🍳!
 
->gmake[2]: *** No rule to make target '/home/skywalker/softwares/openjdk-8-src-b132-03_mar_2014/jdk/src/solaris/classes/java/lang/UNIXProcess.java.linux', needed by '/home/skywalker/softwares/openjdk-8-src-b132-03_mar_2014/build/linux-x86-normal-server-slowdebug/jdk/gensrc/java/lang/UNIXProcess.java'。 停止。
->BuildJdk.gmk:55: recipe for target 'gensrc-only' failed
->gmake[1]: *** [gensrc-only] Error 2
->/home/skywalker/softwares/openjdk-8-src-b132-03_mar_2014//make/Main.gmk:115: recipe for target 'jdk-only' failed
->make: *** [jdk-only] Error 2
+# 版本查看
 
-解决方法是将jdk/src/solaris/classes/java/lang/目录下已有的UNIXProcess.java重命名为UNIXProcess.java.linux即可，原理，不知道。
+编译得到的结果位于openjdk目录下的build/macosx-x86_64-normal-server-slowdebug中，里面的jdk目录便是我们喜，n闻乐见的jdk根目录，里面的java、javac等便是，你懂的。
+
+执行命令:`./java -version`:
+
+```shell
+$ ./java -version
+openjdk version "1.8.0-internal-debug"
+OpenJDK Runtime Environment (build 1.8.0-internal-debug-skyalker_2017_06_10_20_19-b00)
+OpenJDK 64-Bit Server VM (build 25.0-b70-debug, mixed mode)
+```
+
+带有我们的编译时间。
+
+执行`./javac -version`:
+
+```shell
+$ ./javac -version
+javac 1.8.0-internal-debug
+```
+
+# 使用
+
+将我们编译得到的jdk路径添加到环境变量即可`vim ~/.zshrc `
+
+```shell
+# jdk
+JAVA_HOME=/Users/skywalker/softwares/openjdk-8-src-b132-03_mar_2014/build/macosx-x86_64-normal-server-slowdebug/jdk
+export JAVA_HOME
+```
+
+`source ~/.zshrc `之后就可以愉快的使用我们自己的jdk了。
+
+# XCode
+
