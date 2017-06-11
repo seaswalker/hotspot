@@ -1,3 +1,7 @@
+# 环境
+
+Mac OS Sierra 10.12.5, XCode 9, openjdk-8-src-b132-03_mar_2014
+
 # JDK
 
 openjdk8的编译需要jdk1.7作为引导jdk，如果系统已存在1.8版本的，那么我们首先需要将其卸载，Mac上jdk的卸载只需一条命令即可：
@@ -114,7 +118,7 @@ inline relocInfo prefix_relocInfo(int datalen = 0) {
 
 # 版本查看
 
-编译得到的结果位于openjdk目录下的build/macosx-x86_64-normal-server-slowdebug中，里面的jdk目录便是我们喜，n闻乐见的jdk根目录，里面的java、javac等便是，你懂的。
+编译得到的结果位于openjdk目录下的build/macosx-x86_64-normal-server-slowdebug中，里面的jdk目录便是我们喜闻乐见的jdk根目录，里面的java、javac等便是，你懂的。
 
 执行命令:`./java -version`:
 
@@ -148,3 +152,8 @@ export JAVA_HOME
 
 # XCode
 
+剩下的便是在IDE里面进行调试:
+
+- 在XCode里新建一个command line工程，删除自动生成的代码。
+- 修改运行目标，使其定位到我们编译得到的java文件，即build/macosx-x86_64-normal-server-slowdebug/jdk，这样我们便无需再次编译，修改的位置为: Product - Scheme - Edit Scheme - Run/Debug选项卡，将右边Executable处改为java文件即可。
+- 将hotspot源码添加到工程中，方法为在工程上右键选择Add files to "工程名"，之后就可以愉快的打断点调试了。
