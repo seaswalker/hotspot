@@ -281,4 +281,3 @@ void JavaThread::java_resume() {
 - [JVM安全点介绍](https://www.ezlippi.com/blog/2018/01/safepoint.html)
 - [形形色色的锁2](https://www.jianshu.com/p/5fa358431b68)
 - [JVM 内部运行线程介绍](http://ifeve.com/jvm-thread/)
-- 
