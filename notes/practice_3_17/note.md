@@ -138,5 +138,6 @@ oop Klass::_java_mirror: Oop for java/lang/Class @ 0x0000000116f30dc8 Oop for ja
 
 [借HSDB来探索HotSpot VM的运行时数据](http://rednaxelafx.iteye.com/blog/1847971)
 
+# 子类instanceKlass
 
-
+通过_subklass属性
